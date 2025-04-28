@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  ldap_server:
+    container_name: ldap_server
+    image: osixia/openldap
+  #  network_mode: bridge
+    ports:
+      - 389:389
+      - 636:636
+    environment:
+      - LDAP_DOMAIN=wottrich.org
+      - LDAP_ADMIN_PASSWORD=$CI_PASSWORD
+    volumes:
+      - ./ldap:/var/lib/ldap
+      - ./slapd.d:/etc/ldap/slapd.d
+    networks:
+      - wott
+  ldap_admin:
+    container_name: ldap_admin
+    image: osixia/phpldapadmin
+  #  network_mode: bridge
+    ports:
+      - 6443:443
+    depends_on:
+      - ldap_server
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=ldap_server
+    networks:
+      - wott
+volumes:
+  logs: {}
+  data: {}
+  ext: {}
+  db: {}
+  conf: {}
+  db2: {}
+networks:
+  wott:
