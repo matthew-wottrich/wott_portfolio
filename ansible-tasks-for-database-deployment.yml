@@ -1,0 +1,57 @@
+- name: Install MariaDB
+  apt:
+    name: mariadb-server
+    state: present
+    update_cache: yes
+
+- name: Ensure PyMySQL is installed (required for Ansible MySQL modules)
+  apt:
+    name: python3-pymysql
+    state: present
+  become: yes
+
+- name: Create database
+  community.mysql.mysql_db:
+    name: staging
+    state: present
+    login_unix_socket: /run/mysqld/mysqld.sock
+  become: yes
+
+- name: Create MySQL user
+  community.mysql.mysql_user:
+    name: "$CI_REGISTRY_USER"
+    password: "$CI_REGISTRY_PASSWORD"
+    priv: "staging.*:ALL"
+    host: "%"
+    state: present
+    login_unix_socket: /run/mysqld/mysqld.sock
+  become: yes
+
+- name: Copy config to bind on localhost and private IP
+  template:
+    src: 50-server.cnf.j2
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+
+- name: Start MariaDB
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Copy SQL seed file
+  copy:
+    src: data.sql
+    dest: /tmp/data.sql
+
+- name: Import database
+  mysql_db:
+    name: staging
+    state: import
+    target: /tmp/data.sql
+    login_unix_socket: /run/mysqld/mysqld.sock
+  become: yes
+
+- name: Clean up
+  file:
+    path: /tmp/data.sql
+    state: absent
